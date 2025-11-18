@@ -9,17 +9,32 @@ import MarketTable from '@/components/MarketTable';
 import SymbolModal from '@/components/SymbolModal';
 import StatusIndicator from '@/components/StatusIndicator';
 
+const ITEMS_PER_PAGE = 10;
+
 export default function Home() {
   const { tickers, serverTime, loading, error, lastUpdate } = useMarketData();
   const { symbolsInfo } = useMarketSymbols();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // กรองข้อมูลตามคำค้นหา
   const filteredTickers = tickers.filter(([symbol]) => 
     symbol.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // คำนวณ pagination
+  const totalPages = Math.ceil(filteredTickers.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedTickers = filteredTickers.slice(startIndex, endIndex);
+
+  // รีเซ็ต page เมื่อค้นหา
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setCurrentPage(1);
+  };
 
   const handleRowClick = (symbol: string) => {
     setSelectedSymbol(symbol);
@@ -53,30 +68,79 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black p-8">
       <div className="max-w-[1800px] mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-4xl font-bold text-zinc-900 dark:text-zinc-50">
-            Bitkub Market Data (Real-time)
-          </h1>
-          <a
-            href="/chart"
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            ดูกราฟ
-          </a>
-        </div>
+        <h1 className="text-4xl font-bold text-zinc-900 dark:text-zinc-50 mb-6">
+          Bitkub Market Data (Real-time)
+        </h1>
         
         <ServerTimeCard serverTime={serverTime} lastUpdate={lastUpdate} />
 
         <MarketTable
-          filteredTickers={filteredTickers}
+          filteredTickers={paginatedTickers}
           totalTickers={tickers.length}
           searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
+          onSearchChange={handleSearchChange}
           onRowClick={handleRowClick}
         />
+
+        {/* Pagination Controls */}
+        {filteredTickers.length > ITEMS_PER_PAGE && (
+          <div className="mt-4 bg-white dark:bg-zinc-900 rounded-lg shadow p-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-zinc-600 dark:text-zinc-400">
+                แสดง {startIndex + 1}-{Math.min(endIndex, filteredTickers.length)} จาก {filteredTickers.length} รายการ
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  ← ก่อนหน้า
+                </button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                    // แสดงหน้าแรก, หน้าสุดท้าย, และหน้าใกล้เคียงกับหน้าปัจจุบัน
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-3 py-1 rounded transition-colors ${
+                            currentPage === page
+                              ? 'bg-blue-600 text-white font-semibold'
+                              : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    } else if (
+                      page === currentPage - 2 ||
+                      page === currentPage + 2
+                    ) {
+                      return <span key={page} className="text-zinc-500 dark:text-zinc-500">...</span>;
+                    }
+                    return null;
+                  })}
+                </div>
+                
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  ถัดไป →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <StatusIndicator lastUpdate={lastUpdate} />
       </div>

@@ -25,7 +25,7 @@ export default function MarketTable({
               Market Tickers ({filteredTickers.length}/{totalTickers})
             </h2>
             <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-              อัพเดทอัตโนมัติทุก 1 วินาที
+              อัพเดทอัตโนมัติทุก 1 วินาที • แสดง {filteredTickers.length} รายการ
             </p>
           </div>
           <div className="w-80">
