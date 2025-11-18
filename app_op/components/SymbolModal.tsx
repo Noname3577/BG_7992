@@ -1,5 +1,8 @@
 import { TickerData, SymbolInfo } from '@/types/market';
 import { formatNumber } from '@/lib/utils/format';
+import { useChartData } from '@/hooks/useChartData';
+import CandlestickChart from '@/components/CandlestickChart';
+import { useState } from 'react';
 
 interface SymbolModalProps {
   show: boolean;
@@ -9,6 +12,15 @@ interface SymbolModalProps {
   onClose: () => void;
 }
 
+type TimeRange = '1H' | '4H' | '1D' | '1W';
+
+const timeRangeConfig = {
+  '1H': { resolution: '1', seconds: 3600 },
+  '4H': { resolution: '15', seconds: 4 * 3600 },
+  '1D': { resolution: '60', seconds: 24 * 3600 },
+  '1W': { resolution: '240', seconds: 7 * 24 * 3600 },
+};
+
 export default function SymbolModal({
   show,
   symbol,
@@ -16,6 +28,28 @@ export default function SymbolModal({
   tickerData,
   onClose,
 }: SymbolModalProps) {
+  const [timeRange, setTimeRange] = useState<TimeRange>('1D');
+  
+  // แปลง symbol จาก THB_BTC เป็น BTC_THB สำหรับ chart API
+  const chartSymbol = symbol?.startsWith('THB_') 
+    ? symbol.replace('THB_', '') + '_THB'
+    : symbol || '';
+
+  const now = Math.floor(Date.now() / 1000);
+  const config = timeRangeConfig[timeRange];
+  
+  // เรียก useChartData เฉพาะเมื่อมี symbol และ modal แสดงอยู่
+  const shouldFetchChart = !!(show && symbol && chartSymbol);
+  
+  const { chartData, loading: chartLoading } = useChartData({
+    symbol: shouldFetchChart ? chartSymbol : 'BTC_THB', // ใช้ default symbol เพื่อไม่ให้ empty
+    resolution: config.resolution,
+    from: now - config.seconds,
+    to: now,
+    autoRefresh: shouldFetchChart, // เปิด auto refresh เฉพาะเมื่อควร fetch
+    refreshInterval: 60000, // refresh every minute
+  });
+
   if (!show || !symbol) return null;
 
   return (
@@ -24,10 +58,10 @@ export default function SymbolModal({
       onClick={onClose}
     >
       <div 
-        className="bg-white dark:bg-zinc-900 rounded-lg shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+        className="bg-white dark:bg-zinc-900 rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-6 flex items-center justify-between">
+        <div className="sticky top-0 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-6 flex items-center justify-between z-10">
           <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
             {symbol}
           </h3>
@@ -43,6 +77,38 @@ export default function SymbolModal({
         
         <div className="p-6">
           <div className="space-y-6">
+            {/* Price Chart Section */}
+            <div className="bg-zinc-50 dark:bg-zinc-800 p-4 rounded-lg">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                  📈 กราฟราคา
+                </h4>
+                <div className="flex gap-2">
+                  {(Object.keys(timeRangeConfig) as TimeRange[]).map((range) => (
+                    <button
+                      key={range}
+                      onClick={() => setTimeRange(range)}
+                      className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                        timeRange === range
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-600'
+                      }`}
+                    >
+                      {range}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {chartLoading ? (
+                <div className="flex items-center justify-center h-[400px]">
+                  <div className="text-zinc-500 dark:text-zinc-400">กำลังโหลดกราฟ...</div>
+                </div>
+              ) : (
+                <CandlestickChart data={chartData} symbol={symbol} />
+              )}
+            </div>
+
             {!symbolInfo && (
               <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
                 <p className="text-yellow-800 dark:text-yellow-200">

@@ -52,3 +52,22 @@ export interface MarketSymbolsResponse {
   error: number;
   result: SymbolInfo[];
 }
+
+export interface TradingViewHistoryResponse {
+  t: number[];  // timestamps
+  o: number[];  // open prices
+  h: number[];  // high prices
+  l: number[];  // low prices
+  c: number[];  // close prices
+  v: number[];  // volumes
+  s: string;    // status ('ok' or error)
+}
+
+export interface ChartDataPoint {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}

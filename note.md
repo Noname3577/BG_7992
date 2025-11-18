@@ -1,7 +1,5 @@
-# ✔ รูปแบบ API (TradingView History)
-```
+รูปแบบ API (TradingView History)
 https://api.bitkub.com/tradingview/history
-```
 ### **Parameters**
 | Name           | Type   | Required | Description                       |
 | -------------- | ------ | -------- | --------------------------------- |
